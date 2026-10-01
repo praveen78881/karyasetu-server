@@ -1,0 +1,35 @@
+# --- Secrets & live data (NEVER commit) ---
+instance/                 # SQLite DB(s), secret_key, vapid_private.pem
+*.db
+*.sqlite
+*.sqlite3
+secret_key
+vapid_private.pem
+*.pem
+.env
+.env.*
+
+# --- Android signing (keep the keystore local only) ---
+android/karyasetu.jks
+android/*.apk
+android/*.idsig
+android/build/
+*.apk
+*.idsig
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Scratch ---
+scratchpad/
