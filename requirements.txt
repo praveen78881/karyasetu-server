@@ -1,8 +1,9 @@
 flask>=3.0
 flask-sqlalchemy>=3.1
 flask-socketio>=5.3
+gunicorn>=21.2  # production WSGI server (Render / any PaaS); runs wsgi:application
 pillow>=10.0
 pywebpush>=1.14  # web push notifications (VAPID); optional at runtime
-psycopg2-binary>=2.9  # PostgreSQL driver (Supabase); used when DATABASE_URL is postgres
+psycopg2-binary>=2.9  # PostgreSQL driver (Render/Supabase); used when DATABASE_URL is postgres
 # Optional: MySQL driver for production (see README)
 # pymysql>=1.1

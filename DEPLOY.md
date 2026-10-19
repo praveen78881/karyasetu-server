@@ -1,110 +1,120 @@
-# Deploying KaryaSetu to the cloud (free, ~10 minutes)
+# Deploying KaryaSetu to the cloud (free, on Render)
 
 After this, the app runs 24/7 at your own address like
-`https://yourname.pythonanywhere.com` — **your laptop can stay off**.
-Teammates use it from anywhere, install it on their phones, and full
-offline mode works (HTTPS enables it).
+`https://karyasetu.onrender.com` — **your laptop can stay off**. Teammates use
+it from anywhere, install it on their phones, and full offline mode works
+(HTTPS enables it).
 
-The only thing that needs a human is creating the free account (email
-verification). Everything else is prepared: upload the ZIP, paste one
-config block, done.
+KaryaSetu runs on [Render](https://render.com)'s free tier: a free **web
+service** runs the Flask app and a free **Postgres** database stores your data.
+Both are created from the `render.yaml` blueprint in this repo, so the whole
+setup is one step.
+
+> This project's live instance was deployed straight from the Render connector,
+> so the service and database already exist. The steps below are how to
+> reproduce it from scratch (new account, fork, or re-deploy).
 
 ---
 
-## Step-by-step: PythonAnywhere (free "Beginner" plan)
+## One-click deploy (Blueprint)
 
-1. **Sign up** at https://www.pythonanywhere.com → *Pricing & signup* →
-   *Create a Beginner account* (free, no card). Your username becomes your
-   app's address: `https://USERNAME.pythonanywhere.com`.
+1. **Push this project to GitHub** (public or private). The Flask backend lives
+   at `github.com/praveen78881/karyasetu-server`.
 
-2. **Upload the project**: go to the **Files** tab → *Upload a file* →
-   upload `karyasetu-deploy.zip` (it's at `C:\WorkHub\karyasetu-deploy.zip`).
+2. **Sign up** at https://render.com (free, no card) — "Sign in with GitHub" is
+   easiest so Render can read your repo.
 
-3. **Unpack and install**: open the **Consoles** tab → *Bash*, then run:
+3. In the Render dashboard: **New → Blueprint**, pick the `karyasetu-server`
+   repo, and confirm. Render reads [`render.yaml`](render.yaml) and creates:
+   - a **web service** `karyasetu` (Python, free plan) running
+     `gunicorn wsgi:application`;
+   - a free **Postgres** `karyasetu-db`, with its connection string wired into
+     the service as `DATABASE_URL`;
+   - a generated `SECRET_KEY` and `HTTPS=1`.
 
-   ```bash
-   unzip karyasetu-deploy.zip -d karyasetu
-   cd karyasetu
-   pip3 install --user -r requirements.txt
-   ```
+4. Wait for the first deploy (2–4 min). Open the service URL
+   (`https://karyasetu.onrender.com`) — you'll see the **Set up your workspace**
+   page. Create your manager account and add your team from the Team page.
 
-4. **Create the web app**: **Web** tab → *Add a new web app* →
-   accept the domain → **Manual configuration** → pick the newest Python
-   version offered.
+That's it. Tables are created automatically on first boot (`ensure_schema()`),
+so there's nothing to migrate.
 
-5. On the Web tab, set **Source code** to:
+## Manual setup (without the blueprint)
 
-   ```
-   /home/USERNAME/karyasetu
-   ```
+If you'd rather wire it by hand in the dashboard:
 
-6. Click the **WSGI configuration file** link on the Web tab, delete its
-   contents, and paste this (replace `USERNAME`, and put any long random
-   text as the secret key):
+1. **New → PostgreSQL** → Name `karyasetu-db`, Plan **Free**, Region
+   **Singapore** → *Create*. Copy its **Internal Database URL**.
+2. **New → Web Service** → connect the `karyasetu-server` repo →
+   - Runtime: **Python**
+   - Build command: `pip install -r requirements.txt`
+   - Start command:
+     `gunicorn wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120`
+   - Plan: **Free**
+3. On the web service, add **Environment** variables:
 
-   ```python
-   import os, sys
-   sys.path.insert(0, '/home/USERNAME/karyasetu')
-   os.environ['SECRET_KEY'] = 'paste-a-long-random-string-here-keep-it-private'
-   os.environ['HTTPS'] = '1'
-   from app import app as application
-   ```
-
-7. Still on the Web tab, under **Static files** add one mapping:
-
-   | URL | Directory |
+   | Key | Value |
    |---|---|
-   | `/static/` | `/home/USERNAME/karyasetu/static` |
+   | `DATABASE_URL` | *(paste the Postgres Internal Database URL)* |
+   | `SECRET_KEY` | *(any long random string — keep it private)* |
+   | `HTTPS` | `1` |
+   | `PYTHON_VERSION` | `3.13` |
 
-8. Press the green **Reload** button, then open
-   `https://USERNAME.pythonanywhere.com` — you'll see the
-   **Set up your workspace** page. Create your manager account and add
-   your team members from the Team page.
+4. **Create Web Service** and wait for the deploy.
 
 ## Give it to your team
 
 - **Phones/laptops (recommended):** send them the URL. On Android Chrome:
-  menu → *Add to Home screen*. On iPhone Safari: Share → *Add to Home
-  Screen*. On desktop: the install icon in the address bar. This is a full
-  install with the KaryaSetu icon **and complete offline support**.
+  menu → *Add to Home screen*. On iPhone Safari: Share → *Add to Home Screen*.
+  On desktop: the install icon in the address bar. This is a full install with
+  the KaryaSetu icon **and complete offline support**.
 - **The APK:** anyone using `KaryaSetu.apk` opens it, presses Back →
-  *Change server address*, and enters `https://USERNAME.pythonanywhere.com`.
-  (Once you know your final URL, the APK can be rebuilt with it as the
-  built-in default.)
+  *Change server address*, and enters `https://karyasetu.onrender.com`. (Once
+  you know your final URL, the APK can be rebuilt with it as the built-in
+  default.)
 
-## Using MySQL instead of SQLite (optional, also free)
+## Free-plan notes (important)
 
-The app runs on SQLite out of the box and that is fine for a small team —
-the file persists on PythonAnywhere. If you want proper MySQL (as in the
-original spec), the free plan includes a MySQL database:
+- **Spin-down:** a free web service sleeps after ~15 minutes with no traffic;
+  the next visit takes ~30–50 s to wake it, then it's fast again. Upgrade to a
+  paid instance (from $7/mo) to keep it always-on. The app's 30-second
+  auto-refresh is unaffected once awake.
+- **Free Postgres expiry:** Render's free Postgres is deleted after its trial
+  window (shown on the database's page). Before it lapses, either upgrade the
+  database, or point `DATABASE_URL` at another free Postgres (e.g. Supabase) —
+  the app reads whatever `DATABASE_URL` you give it. **Back up first** from the
+  database's dashboard (or `pg_dump "$DATABASE_URL"`).
+- **WebSockets:** instant Socket.IO push is replaced by an automatic refresh
+  every 30 seconds — the client detects this by itself; nothing to configure.
+- **Updates:** push to the repo's default branch; Render auto-deploys
+  (`autoDeploy: true`).
 
-1. **Databases** tab → set a MySQL password → create a database named
-   `karyasetu` (it appears as `USERNAME$karyasetu`).
-2. In the Bash console: `pip3 install --user pymysql`
-3. Add one line to the WSGI configuration file (step 6), just above the
-   `from app import ...` line, filling in your username and DB password:
+## Web Push notifications (optional)
 
-   ```python
-   os.environ['DATABASE_URL'] = 'mysql+pymysql://USERNAME:DBPASSWORD@USERNAME.mysql.pythonanywhere-services.com/USERNAME$karyasetu'
-   ```
-4. Press **Reload**. Tables are created automatically on first start.
+OS-level Web Push needs VAPID keys in the environment. Generate a pair and add
+them to the service's Environment:
 
-## Free-plan notes
+| Key | Value |
+|---|---|
+| `VAPID_PUBLIC` | *(public key)* |
+| `VAPID_PRIVATE` | *(private key)* |
+| `VAPID_SUB` | `you@example.com` |
 
-- Data (your SQLite database) is stored on their disk and **persists**.
-- Visit pythonanywhere.com every ~3 months and press
-  *"Run until 3 months from today"* on the Web tab to keep the free app
-  alive (they email you a reminder).
-- The free plan has no WebSocket support, so instant push is replaced by
-  an automatic refresh every 30 seconds — the app detects this by itself;
-  nothing to configure.
-- To upload a new version later: upload the new ZIP, unzip over the old
-  folder, press Reload.
+Without them, in-app notifications still work; only OS push is off. Push also
+requires an HTTPS origin (Render provides one) and, on iPhone, the PWA installed
+to the Home Screen first.
+
+## Using the existing Supabase Postgres instead
+
+This project already has a Supabase Postgres with migrated data. To run the
+Render Flask app against it instead of Render's own database, set `DATABASE_URL`
+to the Supabase **connection string** (Supabase dashboard → *Connect* → use the
+**Session pooler** URI, which includes your DB password). The app normalises the
+`postgres://` scheme and enables `pool_pre_ping`, so it works as-is.
 
 ## Alternative hosts
 
-Any host that runs Flask works. If you outgrow the free plan:
-- **Render.com** (free tier; add a persistent disk or switch
-  `DATABASE_URL` to Postgres — SQLite on the free tier is wiped on restarts)
-- Any VPS: `pip install -r requirements.txt && python app.py` behind an
-  HTTPS reverse proxy, or gunicorn with `wsgi:application`.
+Any host that runs Flask works. The `Procfile` and `wsgi.py` are standard:
+- A VPS: `pip install -r requirements.txt && gunicorn wsgi:application` behind
+  an HTTPS reverse proxy.
+- Railway / Fly.io / Heroku-likes: they read the `Procfile` directly.
